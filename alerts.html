@@ -180,26 +180,26 @@
         <div class="muted">Explicaciones breves de cómo se detecta cada alerta (heurísticas; no prueba de irregularidad).</div>
         <div id="methodology" class="loading muted">Cargando…</div>
       </section>
-      <figure class="chart" data-variant="all"><img src="assets/alerts_detail_by_rule.png?v=1772726552" alt="Alertas por regla"/><figcaption>Alertas por regla</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_detail_by_rule_no_fuel.png?v=1772726552" alt="Alertas por regla (sin combustibles/gas/energía)"/><figcaption>Alertas por regla (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_orgs.png?v=1772726552" alt="Organismos con más alertas (top mostrado)"/><figcaption>Organismos con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_orgs_no_fuel.png?v=1772726552" alt="Organismos con más alertas (sin combustibles/gas/energía)"/><figcaption>Organismos con más alertas (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_suppliers.png?v=1772726552" alt="Proveedores con más alertas (top mostrado)"/><figcaption>Proveedores con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_suppliers_no_fuel.png?v=1772726552" alt="Proveedores con más alertas (sin combustibles/gas/energía)"/><figcaption>Proveedores con más alertas (sin combustibles/gas/energía)</figcaption></figure>
-      <section class="card">
-        <h2>Resumen ejecutivo</h2>
-        <div class="muted">Explora alertas por regla y abre cada caso para ver datos y referencias oficiales.</div>
-        <div class="toolbar">
-          <input id="q" class="search" placeholder="Buscar (organismo, proveedor, regla)..." list="q_suggest" autocomplete="off" />
-          <datalist id="q_suggest"></datalist>
-          <span class="muted">Tip: escribe parte del nombre.</span>
-        </div>
-        <div class="toolbar" style="margin-top:8px;">
-          <label class="muted" style="display:flex; gap:10px; align-items:center;">
-            <input id="incFuel" type="checkbox" checked />
-            Incluir empresas de combustibles / gas / energía
-          </label>
-        </div>
-        <div class="subttl">Top alertas (entre lo mostrado)</div>
-        <div id="top"></div>
-        <div class="subttl">Resultados</div>
-        <div id="results" class="muted">Escribe en el buscador para ver coincidencias.</div>
-      </section>
+      <figure class="chart" data-variant="all"><img src="assets/alerts_detail_by_rule.png?v=1772727430" alt="Alertas por regla"/><figcaption>Alertas por regla</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_detail_by_rule_no_fuel.png?v=1772727430" alt="Alertas por regla (sin combustibles/gas/energía)"/><figcaption>Alertas por regla (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_orgs.png?v=1772727430" alt="Organismos con más alertas (top mostrado)"/><figcaption>Organismos con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_orgs_no_fuel.png?v=1772727430" alt="Organismos con más alertas (sin combustibles/gas/energía)"/><figcaption>Organismos con más alertas (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_suppliers.png?v=1772727430" alt="Proveedores con más alertas (top mostrado)"/><figcaption>Proveedores con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_suppliers_no_fuel.png?v=1772727430" alt="Proveedores con más alertas (sin combustibles/gas/energía)"/><figcaption>Proveedores con más alertas (sin combustibles/gas/energía)</figcaption></figure>
+	      <section class="card">
+	        <h2>Resumen ejecutivo</h2>
+	        <div class="muted">Explora alertas por regla y abre cada caso para ver datos y referencias oficiales.</div>
+	        <div class="toolbar">
+	          <input id="q" class="search" placeholder="Buscar (organismo, proveedor, regla)..." list="q_suggest" autocomplete="off" />
+	          <datalist id="q_suggest"></datalist>
+	          <span class="muted">Tip: escribe parte del nombre.</span>
+	        </div>
+	        <div class="toolbar" style="margin-top:8px;">
+	          <label class="muted" style="display:flex; gap:10px; align-items:center;">
+	            <input id="incFuel" type="checkbox" checked />
+	            Incluir empresas de combustibles / gas / energía
+	          </label>
+	        </div>
+	        <div class="subttl">Resultados</div>
+	        <div id="results" class="muted">Escribe en el buscador para ver coincidencias.</div>
+	        <div class="subttl">Top alertas (entre lo mostrado)</div>
+	        <div id="top"></div>
+	      </section>
       <div id="rules"></div>
     </main>
     <div id="payModal" class="modal" aria-hidden="true">
@@ -222,7 +222,7 @@
         if (p && p.resolve) p.resolve(obj || {});
       };
     </script>
-    <script src="alerts_data/meta.js?v=1772726552"></script>
+    <script src="alerts_data/meta.js?v=1772727430"></script>
     <script>
       (function() {
         const META = Array.isArray(window.__ALERTS_META) ? window.__ALERTS_META : [];
@@ -368,7 +368,7 @@
           const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
           window.__CHUNK_PROM[chunkId] = { promise, resolve, reject };
           const s = document.createElement('script');
-          s.src = 'alerts_data/chunks/' + chunkId + '.js?v=1772726552';
+          s.src = 'alerts_data/chunks/' + chunkId + '.js?v=1772727430';
           s.onerror = () => {
             try { delete window.__CHUNK_PROM[chunkId]; } catch (e) {}
             reject(new Error('No se pudo cargar ' + s.src));
