@@ -180,12 +180,13 @@
         <div class="muted">Explicaciones breves de cómo se detecta cada alerta (heurísticas; no prueba de irregularidad).</div>
         <div id="methodology" class="loading muted">Cargando…</div>
       </section>
-      <figure class="chart" data-variant="all"><img src="assets/alerts_detail_by_rule.png?v=1772718712" alt="Alertas por regla"/><figcaption>Alertas por regla</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_detail_by_rule_no_fuel.png?v=1772718712" alt="Alertas por regla (sin combustibles/gas/energía)"/><figcaption>Alertas por regla (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_orgs.png?v=1772718712" alt="Organismos con más alertas (top mostrado)"/><figcaption>Organismos con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_orgs_no_fuel.png?v=1772718712" alt="Organismos con más alertas (sin combustibles/gas/energía)"/><figcaption>Organismos con más alertas (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_suppliers.png?v=1772718712" alt="Proveedores con más alertas (top mostrado)"/><figcaption>Proveedores con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_suppliers_no_fuel.png?v=1772718712" alt="Proveedores con más alertas (sin combustibles/gas/energía)"/><figcaption>Proveedores con más alertas (sin combustibles/gas/energía)</figcaption></figure>
+      <figure class="chart" data-variant="all"><img src="assets/alerts_detail_by_rule.png?v=1772726552" alt="Alertas por regla"/><figcaption>Alertas por regla</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_detail_by_rule_no_fuel.png?v=1772726552" alt="Alertas por regla (sin combustibles/gas/energía)"/><figcaption>Alertas por regla (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_orgs.png?v=1772726552" alt="Organismos con más alertas (top mostrado)"/><figcaption>Organismos con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_orgs_no_fuel.png?v=1772726552" alt="Organismos con más alertas (sin combustibles/gas/energía)"/><figcaption>Organismos con más alertas (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_suppliers.png?v=1772726552" alt="Proveedores con más alertas (top mostrado)"/><figcaption>Proveedores con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_suppliers_no_fuel.png?v=1772726552" alt="Proveedores con más alertas (sin combustibles/gas/energía)"/><figcaption>Proveedores con más alertas (sin combustibles/gas/energía)</figcaption></figure>
       <section class="card">
         <h2>Resumen ejecutivo</h2>
         <div class="muted">Explora alertas por regla y abre cada caso para ver datos y referencias oficiales.</div>
         <div class="toolbar">
-          <input id="q" class="search" placeholder="Buscar (organismo, proveedor, regla)..." />
+          <input id="q" class="search" placeholder="Buscar (organismo, proveedor, regla)..." list="q_suggest" autocomplete="off" />
+          <datalist id="q_suggest"></datalist>
           <span class="muted">Tip: escribe parte del nombre.</span>
         </div>
         <div class="toolbar" style="margin-top:8px;">
@@ -221,7 +222,7 @@
         if (p && p.resolve) p.resolve(obj || {});
       };
     </script>
-    <script src="alerts_data/meta.js?v=1772718712"></script>
+    <script src="alerts_data/meta.js?v=1772726552"></script>
     <script>
       (function() {
         const META = Array.isArray(window.__ALERTS_META) ? window.__ALERTS_META : [];
@@ -230,6 +231,9 @@
         const ruleById = new Map(RULES.map(r => [String(r.rule_id), r]));
         const PAGE_SIZE = Math.max(5, Number(window.__PAGE_SIZE || 50));
         let includeFuel = true;
+        let _searchTimer = null;
+        let _suggTimer = null;
+        let _suggest = null; // index: orgs/sups/rules/codes
 
         function norm(s) {
           try {
@@ -243,6 +247,12 @@
           }
         }
 
+        function tokens(s) {
+          const t = norm(s || '');
+          if (!t) return [];
+          return t.split(/\s+/).filter(Boolean).slice(0, 8);
+        }
+
         // Precompute searchable text so the input handler stays fast.
         for (const m of META) {
           const hay = (m.rule_title||'') + ' ' + (m.rule_id||'') + ' ' + (m.entity_label||'') + ' ' + (m.org_name||'') + ' ' + (m.supplier_name||'') + ' ' + (m.search_extra||'');
@@ -252,6 +262,82 @@
 
         function passesFuel(m) {
           return includeFuel || !m._fuel;
+        }
+
+        function buildSuggestIndex() {
+          const orgCounts = new Map();
+          const supCounts = new Map();
+          const ruleCounts = new Map();
+          const codeCounts = new Map();
+          for (const m of META) {
+            if (!passesFuel(m)) continue;
+            const on = String(m.org_name || '').trim();
+            const sn = String(m.supplier_name || '').trim();
+            const rt = String(m.rule_title || m.rule_id || '').trim();
+            if (on) orgCounts.set(on, (orgCounts.get(on) || 0) + 1);
+            if (sn) supCounts.set(sn, (supCounts.get(sn) || 0) + 1);
+            if (rt) ruleCounts.set(rt, (ruleCounts.get(rt) || 0) + 1);
+            const extra = String(m.search_extra || '').trim();
+            if (extra) {
+              const parts = extra.split(/\s+/).filter(Boolean);
+              for (const p of parts) {
+                if (p.length < 5) continue;
+                if (/^\d{2,}/.test(p) || /-/.test(p)) codeCounts.set(p, (codeCounts.get(p) || 0) + 1);
+              }
+            }
+          }
+          function pack(map) {
+            const arr = [];
+            for (const [name, c] of map.entries()) arr.push({ name, norm: norm(name), c });
+            arr.sort((a,b) => (b.c - a.c) || (a.name.localeCompare(b.name)));
+            return arr;
+          }
+          _suggest = {
+            orgs: pack(orgCounts),
+            sups: pack(supCounts),
+            rules: pack(ruleCounts),
+            codes: pack(codeCounts),
+          };
+        }
+
+        function updateSuggest(term) {
+          const dl = document.getElementById('q_suggest');
+          if (!dl) return;
+          if (!_suggest) buildSuggestIndex();
+          const ts = tokens(term);
+          if (!ts.length) { dl.innerHTML = ''; return; }
+          const q = ts.join(' ');
+          const out = [];
+          const add = (label) => {
+            if (!label) return;
+            if (out.length >= 18) return;
+            if (out.includes(label)) return;
+            out.push(label);
+          };
+          // Prefer exact-ish code matches (tender/OC/doc).
+          for (const x of _suggest.codes) {
+            if (x.norm.includes(q)) add(x.name);
+            if (out.length >= 6) break;
+          }
+          // Then orgs/suppliers/rules by frequency.
+          const pick = (arr) => {
+            for (const x of arr) {
+              // all tokens must be present
+              let ok = true;
+              for (const t of ts) { if (!x.norm.includes(t)) { ok = false; break; } }
+              if (!ok) continue;
+              add(x.name);
+              if (out.length >= 18) break;
+            }
+          };
+          pick(_suggest.orgs);
+          pick(_suggest.sups);
+          pick(_suggest.rules);
+          dl.innerHTML = out.map(v => '<option value="' + escAttr(v) + '"></option>').join('');
+        }
+
+        function escAttr(s) {
+          return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
 
         function setChartVariant() {
@@ -282,8 +368,11 @@
           const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
           window.__CHUNK_PROM[chunkId] = { promise, resolve, reject };
           const s = document.createElement('script');
-          s.src = 'alerts_data/chunks/' + chunkId + '.js?v=1772718712';
-          s.onerror = () => reject(new Error('No se pudo cargar ' + s.src));
+          s.src = 'alerts_data/chunks/' + chunkId + '.js?v=1772726552';
+          s.onerror = () => {
+            try { delete window.__CHUNK_PROM[chunkId]; } catch (e) {}
+            reject(new Error('No se pudo cargar ' + s.src));
+          };
           document.head.appendChild(s);
           return promise;
         }
@@ -302,15 +391,25 @@
           d.addEventListener('toggle', async () => {
             if (!d.open) return;
             if (d.dataset.loaded === '1') return;
-            d.dataset.loaded = '1';
+            if (d.dataset.loading === '1') return;
+            d.dataset.loading = '1';
             const bodyEl = document.getElementById(bodyId);
             if (bodyEl) bodyEl.textContent = 'Cargando…';
             try {
               const chunk = await loadChunk(String(m.chunk));
               const html = chunk[String(m.alert_id)];
               if (bodyEl) bodyEl.innerHTML = html || "<div class='muted'>Detalle no encontrado.</div>";
+              d.dataset.loaded = '1';
             } catch (e) {
-              if (bodyEl) bodyEl.innerHTML = "<div class='muted'>Error cargando detalle.</div>";
+              const msg = (e && (e.message || String(e))) ? String(e.message || String(e)) : 'Error';
+              if (bodyEl) bodyEl.innerHTML = "<div class='muted'>Error cargando detalle.</div>"
+                + "<div style='margin-top:8px; display:flex; gap:8px; align-items:center;'>"
+                + "<button class='btn btn-sm js-retry' type='button' data-target='" + anchor + "'>Reintentar</button>"
+                + "<span class='muted'>" + escHtml(msg) + "</span>"
+                + "</div>";
+              try { delete d.dataset.loaded; } catch (err) { d.dataset.loaded = ''; }
+            } finally {
+              d.dataset.loading = '';
             }
           });
           container.appendChild(d);
@@ -625,12 +724,15 @@
         function renderSearch(term) {
           const out = document.getElementById('results');
           if (!out) return;
-          const t = norm(term || '');
-          if (!t) { out.className = 'muted'; out.textContent = 'Escribe en el buscador para ver coincidencias.'; return; }
+          const ts = tokens(term || '');
+          if (!ts.length) { out.className = 'muted'; out.textContent = 'Escribe en el buscador para ver coincidencias.'; return; }
           const hits = [];
           for (const m of META) {
             if (!passesFuel(m)) continue;
-            if ((m._hay || '').includes(t)) hits.push(m);
+            let ok = true;
+            const hay = (m._hay || '');
+            for (const t of ts) { if (!hay.includes(t)) { ok = false; break; } }
+            if (ok) hits.push(m);
             if (hits.length >= 120) break;
           }
           if (!hits.length) { out.className = 'muted'; out.textContent = 'Sin coincidencias.'; return; }
@@ -651,6 +753,18 @@
         document.addEventListener('click', (e) => {
           const t = e.target;
           if (!t) return;
+          const rbtn = t.closest && t.closest('button.js-retry');
+          if (rbtn) {
+            const target = String(rbtn.dataset.target || '');
+            const d = target ? document.getElementById(target) : null;
+            if (d) {
+              try { delete d.dataset.loaded; } catch (err) { d.dataset.loaded = ''; }
+              d.dataset.loading = '';
+              d.open = false;
+              d.open = true;
+            }
+            return;
+          }
           const pbtn = t.closest && t.closest('button.js-page');
           if (pbtn) {
             const rid = String(pbtn.dataset.rule || '');
@@ -686,7 +800,22 @@
 
         renderAll();
         const q = document.getElementById('q');
-        if (q) q.addEventListener('input', () => renderSearch(q.value));
+        if (q) {
+          q.addEventListener('input', () => {
+            if (_searchTimer) clearTimeout(_searchTimer);
+            if (_suggTimer) clearTimeout(_suggTimer);
+            const v = q.value || '';
+            _suggTimer = setTimeout(() => updateSuggest(v), 60);
+            _searchTimer = setTimeout(() => renderSearch(v), 120);
+          });
+          q.addEventListener('change', () => {
+            const v = q.value || '';
+            updateSuggest(v);
+            renderSearch(v);
+          });
+          // initial suggestions
+          updateSuggest(q.value || '');
+        }
       })();
     </script>
   </body>
