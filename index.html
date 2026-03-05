@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alertas — investigación</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --fg: #e6edf3;
+        --muted: #9aa4b2;
+        --card: #111826;
+        --line: #233044;
+        --warn: #f0ad4e;
+        --money: #5cb85c;
+        --ai: #b68cff;
+      }
+      body {
+        margin: 0; padding: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg); color: var(--fg);
+      }
+      header {
+        padding: 18px 18px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(217,83,79,0.12), rgba(0,0,0,0));
+      }
+      .container { max-width: 1100px; margin: 0 auto; padding: 18px; }
+      .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 14px;
+      }
+      .muted { color: var(--muted); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .link { color: #89b4ff; text-decoration: none; }
+      .link:hover { text-decoration: underline; }
+      .bul { margin: 8px 0 0 18px; padding: 0; }
+      .bul li { margin: 4px 0; }
+      .k { color: var(--muted); }
+      .links { margin-top: 4px; font-size: 12px; }
+      .sumline { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+      .suml { min-width: 0; }
+      .sumr { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+      .rul { font-size: 12px; color: var(--muted); }
+      .ent { font-size: 13px; font-weight: 650; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 680px; }
+      .badge {
+        display: inline-flex; gap: 6px; align-items: baseline;
+        border: 1px solid rgba(35,48,68,0.9);
+        background: rgba(255,255,255,0.03);
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+      .badge .bkey { color: var(--muted); }
+      .badge.warn { border-color: rgba(240,173,78,0.5); }
+      .badge.money { border-color: rgba(92,184,92,0.5); }
+      .badge.ai { border-color: rgba(182,140,255,0.5); }
+      .summary { margin-top: 10px; }
+      .toolbar {
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      input.search {
+        flex: 1;
+        min-width: 220px;
+        border: 1px solid var(--line);
+        background: rgba(0,0,0,0.2);
+        color: var(--fg);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      figure {
+        margin: 0;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+      }
+      figcaption { color: var(--muted); font-size: 12px; margin-top: 6px; }
+      img { width: 100%; height: auto; display: block; border-radius: 8px; }
+      figure.chart[data-variant="nofuel"] { display: none; }
+      h1 { margin: 0; font-size: 18px; }
+      h2 { margin: 0 0 10px 0; font-size: 14px; }
+      details.alert {
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+      details.alert summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      details.alert summary::-webkit-details-marker { display: none; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th, td {
+        border-bottom: 1px solid var(--line);
+        padding: 7px 8px;
+        vertical-align: top;
+      }
+      th { text-align: left; color: var(--muted); font-weight: 600; }
+      td.num { text-align: right; font-variant-numeric: tabular-nums; }
+      .kv td { border-bottom: 1px solid rgba(35,48,68,0.6); }
+      .subttl { margin: 10px 0 6px 0; font-size: 12px; color: var(--muted); }
+      .desc { margin: 6px 0 10px 0; font-size: 13px; color: var(--muted); }
+      .loading { padding: 10px 0; }
+      .btn {
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.03);
+        color: var(--fg);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .btn:hover { background: rgba(255,255,255,0.06); }
+      .btn-sm { padding: 5px 8px; border-radius: 9px; }
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      .modal.show { display: flex; }
+      .modal .backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+      }
+      .modal .box {
+        position: relative;
+        width: min(860px, calc(100% - 28px));
+        max-height: calc(100% - 28px);
+        overflow: auto;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .modal .mhead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .modal .mtitle { font-weight: 700; }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      @media (max-width: 900px) {
+        .grid2 { grid-template-columns: 1fr; }
+        .ent { max-width: 100%; white-space: normal; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>Alertas — investigación (útil)</h1>
+        <div class="meta">Ventana: 2022-03-04 → 2026-03-04</div>
+      </div>
+    </header>
+    <main class="container">
+      <section class="card">
+        <h2>Metodologías de detección (por regla)</h2>
+        <div class="muted">Explicaciones breves de cómo se detecta cada alerta (heurísticas; no prueba de irregularidad).</div>
+        <div id="methodology" class="loading muted">Cargando…</div>
+      </section>
+      <figure class="chart" data-variant="all"><img src="assets/alerts_detail_by_rule.png?v=1772718712" alt="Alertas por regla"/><figcaption>Alertas por regla</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_detail_by_rule_no_fuel.png?v=1772718712" alt="Alertas por regla (sin combustibles/gas/energía)"/><figcaption>Alertas por regla (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_orgs.png?v=1772718712" alt="Organismos con más alertas (top mostrado)"/><figcaption>Organismos con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_orgs_no_fuel.png?v=1772718712" alt="Organismos con más alertas (sin combustibles/gas/energía)"/><figcaption>Organismos con más alertas (sin combustibles/gas/energía)</figcaption></figure><figure class="chart" data-variant="all"><img src="assets/alerts_top_suppliers.png?v=1772718712" alt="Proveedores con más alertas (top mostrado)"/><figcaption>Proveedores con más alertas (top mostrado)</figcaption></figure><figure class="chart" data-variant="nofuel"><img src="assets/alerts_top_suppliers_no_fuel.png?v=1772718712" alt="Proveedores con más alertas (sin combustibles/gas/energía)"/><figcaption>Proveedores con más alertas (sin combustibles/gas/energía)</figcaption></figure>
+      <section class="card">
+        <h2>Resumen ejecutivo</h2>
+        <div class="muted">Explora alertas por regla y abre cada caso para ver datos y referencias oficiales.</div>
+        <div class="toolbar">
+          <input id="q" class="search" placeholder="Buscar (organismo, proveedor, regla)..." />
+          <span class="muted">Tip: escribe parte del nombre.</span>
+        </div>
+        <div class="toolbar" style="margin-top:8px;">
+          <label class="muted" style="display:flex; gap:10px; align-items:center;">
+            <input id="incFuel" type="checkbox" checked />
+            Incluir empresas de combustibles / gas / energía
+          </label>
+        </div>
+        <div class="subttl">Top alertas (entre lo mostrado)</div>
+        <div id="top"></div>
+        <div class="subttl">Resultados</div>
+        <div id="results" class="muted">Escribe en el buscador para ver coincidencias.</div>
+      </section>
+      <div id="rules"></div>
+    </main>
+    <div id="payModal" class="modal" aria-hidden="true">
+      <div class="backdrop" data-close="1"></div>
+      <div class="box" role="dialog" aria-modal="true" aria-label="Pago DIPRES">
+        <div class="mhead">
+          <div class="mtitle">Pago DIPRES</div>
+          <button id="payModalClose" class="btn btn-sm" type="button">Cerrar</button>
+        </div>
+        <div id="payModalBody"></div>
+      </div>
+    </div>
+    <script>
+      // Chunk registry: chunk scripts call __registerChunk(chunkId, obj).
+      window.__CHUNKS = {};
+      window.__CHUNK_PROM = {};
+      window.__registerChunk = function(chunkId, obj) {
+        window.__CHUNKS[chunkId] = obj || {};
+        const p = window.__CHUNK_PROM[chunkId];
+        if (p && p.resolve) p.resolve(obj || {});
+      };
+    </script>
+    <script src="alerts_data/meta.js?v=1772718712"></script>
+    <script>
+      (function() {
+        const META = Array.isArray(window.__ALERTS_META) ? window.__ALERTS_META : [];
+        const RULES = Array.isArray(window.__RULES) ? window.__RULES : [];
+        const metaById = new Map(META.map(m => [String(m.alert_id), m]));
+        const ruleById = new Map(RULES.map(r => [String(r.rule_id), r]));
+        const PAGE_SIZE = Math.max(5, Number(window.__PAGE_SIZE || 50));
+        let includeFuel = true;
+
+        function norm(s) {
+          try {
+            return String(s || '')
+              .normalize('NFD')
+              .replace(/\p{Diacritic}/gu, '')
+              .toLowerCase()
+              .trim();
+          } catch (e) {
+            return String(s || '').toLowerCase().trim();
+          }
+        }
+
+        // Precompute searchable text so the input handler stays fast.
+        for (const m of META) {
+          const hay = (m.rule_title||'') + ' ' + (m.rule_id||'') + ' ' + (m.entity_label||'') + ' ' + (m.org_name||'') + ' ' + (m.supplier_name||'') + ' ' + (m.search_extra||'');
+          m._hay = norm(hay);
+          m._fuel = !!m.is_fuel_energy;
+        }
+
+        function passesFuel(m) {
+          return includeFuel || !m._fuel;
+        }
+
+        function setChartVariant() {
+          const all = document.querySelectorAll('figure.chart[data-variant="all"]');
+          const nof = document.querySelectorAll('figure.chart[data-variant="nofuel"]');
+          for (const el of all) el.style.display = includeFuel ? '' : 'none';
+          for (const el of nof) el.style.display = includeFuel ? 'none' : '';
+        }
+
+        function computeVisibleCounts() {
+          const map = new Map();
+          for (const r of RULES) {
+            const idsAll = Array.isArray(r.alert_ids) ? r.alert_ids : [];
+            let visibleCount = 0;
+            for (const aid of idsAll) {
+              const m = metaById.get(String(aid));
+              if (m && passesFuel(m)) visibleCount += 1;
+            }
+            map.set(String(r.rule_id), visibleCount);
+          }
+          return map;
+        }
+
+        function loadChunk(chunkId) {
+          if (window.__CHUNKS[chunkId]) return Promise.resolve(window.__CHUNKS[chunkId]);
+          if (window.__CHUNK_PROM[chunkId]) return window.__CHUNK_PROM[chunkId].promise;
+          let resolve, reject;
+          const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+          window.__CHUNK_PROM[chunkId] = { promise, resolve, reject };
+          const s = document.createElement('script');
+          s.src = 'alerts_data/chunks/' + chunkId + '.js?v=1772718712';
+          s.onerror = () => reject(new Error('No se pudo cargar ' + s.src));
+          document.head.appendChild(s);
+          return promise;
+        }
+
+        function renderAlertInto(container, m) {
+          const anchor = String(m.anchor || ('a_' + m.alert_id));
+          const d = document.createElement('details');
+          d.className = 'alert';
+          d.id = anchor;
+          d.dataset.rule = String(m.rule_id || '');
+          d.dataset.entity = String(m.entity_type || '');
+          d.dataset.org = String(m.org_name || '');
+          d.dataset.supplier = String(m.supplier_name || '');
+          const bodyId = 'body_' + anchor;
+          d.innerHTML = (m.summary_html || '') + `<div id="${bodyId}" class="loading muted">Abre para ver el detalle…</div>`;
+          d.addEventListener('toggle', async () => {
+            if (!d.open) return;
+            if (d.dataset.loaded === '1') return;
+            d.dataset.loaded = '1';
+            const bodyEl = document.getElementById(bodyId);
+            if (bodyEl) bodyEl.textContent = 'Cargando…';
+            try {
+              const chunk = await loadChunk(String(m.chunk));
+              const html = chunk[String(m.alert_id)];
+              if (bodyEl) bodyEl.innerHTML = html || "<div class='muted'>Detalle no encontrado.</div>";
+            } catch (e) {
+              if (bodyEl) bodyEl.innerHTML = "<div class='muted'>Error cargando detalle.</div>";
+            }
+          });
+          container.appendChild(d);
+        }
+
+        function _posInRule(ruleObj, alertId) {
+          if (!ruleObj) return -1;
+          if (!ruleObj.__pos) {
+            const map = new Map();
+            const ids = Array.isArray(ruleObj.alert_ids) ? ruleObj.alert_ids : [];
+            for (let i = 0; i < ids.length; i++) map.set(String(ids[i]), i);
+            ruleObj.__pos = map;
+          }
+          const idx = ruleObj.__pos.get(String(alertId));
+          return (idx === undefined || idx === null) ? -1 : Number(idx);
+        }
+
+        function renderRulePage(ruleObj, pageIdx) {
+          const ruleId = String(ruleObj.rule_id);
+          const el = document.getElementById('rule_' + ruleId);
+          if (!el) return;
+          const pager = el.querySelector('[data-role="pager"]');
+          const body = el.querySelector('[data-role="rule-body"]');
+          if (!body) return;
+          const idsAll = Array.isArray(ruleObj.alert_ids) ? ruleObj.alert_ids : [];
+          const ids = [];
+          for (const aid of idsAll) {
+            const m = metaById.get(String(aid));
+            if (m && passesFuel(m)) ids.push(String(aid));
+          }
+          const total = ids.length;
+          const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+          const p = Math.max(0, Math.min(pages - 1, Number(pageIdx) || 0));
+          el.dataset.page = String(p);
+
+          if (pager) {
+            const start = p * PAGE_SIZE + 1;
+            const end = Math.min(total, (p + 1) * PAGE_SIZE);
+            const prevDisabled = (p <= 0) ? 'disabled' : '';
+            const nextDisabled = (p >= pages - 1) ? 'disabled' : '';
+            pager.innerHTML = `
+              <div class="toolbar" style="margin-top:10px;">
+                <button class="btn btn-sm js-page" type="button" data-rule="${ruleId}" data-page="${p - 1}" ${prevDisabled}>Anterior</button>
+                <span class="muted">Página ${p + 1} / ${pages} · mostrando ${start}–${end} de ${total}</span>
+                <button class="btn btn-sm js-page" type="button" data-rule="${ruleId}" data-page="${p + 1}" ${nextDisabled}>Siguiente</button>
+              </div>
+            `;
+          }
+
+          body.innerHTML = '';
+          const slice = ids.slice(p * PAGE_SIZE, (p + 1) * PAGE_SIZE);
+          for (const aid of slice) {
+            const m = metaById.get(String(aid));
+            if (m) renderAlertInto(body, m);
+          }
+          if (!slice.length) {
+            body.innerHTML = "<div class='muted'>Sin alertas en esta página.</div>";
+          }
+        }
+
+        function ensureRuleOpen(ruleId) {
+          const el = document.getElementById('rule_' + ruleId);
+          if (!el) return null;
+          el.open = true;
+          return el;
+        }
+
+        function openAlert(alertId) {
+          const m = metaById.get(String(alertId));
+          if (!m) return;
+          if (!passesFuel(m)) {
+            includeFuel = true;
+            const cb = document.getElementById('incFuel');
+            if (cb) cb.checked = true;
+            renderAll();
+          }
+          const ruleId = String(m.rule_id || '');
+          ensureRuleOpen(ruleId);
+          const ruleObj = ruleById.get(ruleId);
+          if (ruleObj) {
+            // Compute page using filtered ids to match what's rendered.
+            const idsAll = Array.isArray(ruleObj.alert_ids) ? ruleObj.alert_ids : [];
+            const ids = [];
+            for (const aid of idsAll) {
+              const mm = metaById.get(String(aid));
+              if (mm && passesFuel(mm)) ids.push(String(aid));
+            }
+            const idx = ids.indexOf(String(m.alert_id));
+            const p = (idx >= 0) ? Math.floor(idx / PAGE_SIZE) : 0;
+            renderRulePage(ruleObj, p);
+          }
+          setTimeout(() => {
+            const anchor = String(m.anchor || ('a_' + m.alert_id));
+            const ael = document.getElementById(anchor);
+            if (ael) {
+              ael.open = true;
+              ael.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
+          }, 0);
+        }
+
+        function fmtMoney(n) {
+          try {
+            const x = Math.round(Number(n) || 0);
+            const s = Math.abs(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return (x < 0 ? '-' : '') + '$ ' + s;
+          } catch (e) {
+            return '$ 0';
+          }
+        }
+
+        // --- Modal: pagos DIPRES ---
+        const payModal = document.getElementById('payModal');
+        const payModalBody = document.getElementById('payModalBody');
+        const payModalClose = document.getElementById('payModalClose');
+
+        function closePayModal() {
+          if (!payModal) return;
+          payModal.classList.remove('show');
+          payModal.setAttribute('aria-hidden', 'true');
+          if (payModalBody) payModalBody.textContent = '';
+        }
+
+        function openPayModal(pay) {
+          if (!payModal || !payModalBody) return;
+          payModalBody.textContent = '';
+
+          const wrap = document.createElement('div');
+          const table = document.createElement('table');
+          const tbody = document.createElement('tbody');
+
+          function addRow(label, value) {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.textContent = label;
+            const td = document.createElement('td');
+            td.className = 'mono';
+            td.textContent = value == null ? '' : String(value);
+            tr.appendChild(th);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+          }
+
+          const payDate = pay && pay.pay_date ? String(pay.pay_date) : '';
+          const year = payDate && payDate.length >= 4 ? payDate.slice(0,4) : '';
+
+          addRow('Fecha pago', payDate);
+          addRow('Monto', fmtMoney(pay && pay.amount));
+          addRow('Moneda', pay && pay.currency);
+          addRow('OC', pay && pay.oc_code);
+          addRow('Beneficiario', pay && (pay.beneficiary_name || pay.nombre_beneficiario || pay.beneficiario));
+          addRow('Tipo doc', pay && pay.doc_type);
+          addRow('N° doc', pay && pay.doc_number);
+          addRow('Días de pago', pay && pay.days_to_pay);
+          addRow('Sector', pay && pay.sector);
+          addRow('Región', pay && pay.region);
+
+          table.appendChild(tbody);
+          wrap.appendChild(table);
+
+          const refs = document.createElement('div');
+          refs.className = 'subttl';
+          refs.textContent = 'Referencias oficiales';
+          wrap.appendChild(refs);
+          const ul = document.createElement('ul');
+          ul.className = 'bul';
+          const li1 = document.createElement('li');
+          const a1 = document.createElement('a');
+          a1.className = 'link';
+          a1.target = '_blank';
+          a1.rel = 'noopener noreferrer';
+          a1.href = year ? ('https://api.presupuestoabierto.gob.cl/data/pagos-' + year + '.gz') : 'https://api.presupuestoabierto.gob.cl/';
+          a1.textContent = year ? ('DIPRES: pagos ' + year + ' (descarga)') : 'DIPRES: Presupuesto Abierto (portal)';
+          li1.appendChild(a1);
+          ul.appendChild(li1);
+
+          const q = (pay && (pay.oc_code || pay.doc_number || pay.beneficiary_name || pay.nombre_beneficiario || pay.beneficiario)) ? String(pay.oc_code || pay.doc_number || pay.beneficiary_name || pay.nombre_beneficiario || pay.beneficiario) : '';
+          if (year && q) {
+            const li2 = document.createElement('li');
+            const a2 = document.createElement('a');
+            a2.className = 'link';
+            a2.target = '_blank';
+            a2.rel = 'noopener noreferrer';
+            a2.href = 'https://api.presupuestoabierto.gob.cl/api/v1/elasticsearch?q=' + encodeURIComponent(q) + '&periodo=' + encodeURIComponent(year) + '&size=50&from=0';
+            a2.textContent = 'DIPRES: búsqueda de transacciones (API)';
+            li2.appendChild(a2);
+            ul.appendChild(li2);
+          }
+          wrap.appendChild(ul);
+
+          payModalBody.appendChild(wrap);
+          payModal.classList.add('show');
+          payModal.setAttribute('aria-hidden', 'false');
+        }
+
+        document.addEventListener('click', (e) => {
+          const t = e.target;
+          if (!t) return;
+          if (t.closest && t.closest('[data-close="1"]')) {
+            closePayModal();
+            return;
+          }
+          const btn = t.closest && t.closest('button.pay-modal');
+          if (!btn) return;
+          try {
+            const raw = btn.dataset.pay || '';
+            const pay = raw ? JSON.parse(raw) : null;
+            openPayModal(pay);
+          } catch (err) {
+            openPayModal({ pay_date: '', amount: 0 });
+          }
+        });
+        if (payModalClose) payModalClose.addEventListener('click', closePayModal);
+        document.addEventListener('keydown', (e) => {
+          if (e && e.key === 'Escape') closePayModal();
+        });
+
+        function renderTop() {
+          const topDiv = document.getElementById('top');
+          if (!topDiv) return;
+          const arr = META.filter(passesFuel).slice().sort((a,b) => (Number(b.amount||0)-Number(a.amount||0)) || (Number(b.score||0)-Number(a.score||0))).slice(0, 200);
+          if (!arr.length) { topDiv.innerHTML = "<div class='muted'>Sin alertas.</div>"; return; }
+          let html = "<table class='summary'><thead><tr><th>Regla</th><th>Entidad</th><th class='num'>Monto (aprox.)</th><th></th></tr></thead><tbody>";
+          for (const m of arr) {
+            html += "<tr>";
+            html += "<td>" + (m.rule_title || m.rule_id || '') + "</td>";
+            html += "<td>" + (m.entity_label || '') + "</td>";
+            html += "<td class='num mono'>" + fmtMoney(m.amount || 0) + "</td>";
+            html += "<td><button class='btn btn-sm js-open' type='button' data-alert='" + String(m.alert_id) + "'>Ver</button></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+          topDiv.innerHTML = html;
+        }
+
+        function renderMethodology(counts) {
+          const host = document.getElementById('methodology');
+          if (!host) return;
+          if (!RULES.length) {
+            host.className = 'muted';
+            host.textContent = 'No hay reglas disponibles para esta ventana.';
+            return;
+          }
+          const rows = [];
+          for (const r of RULES) {
+            const rid = String(r.rule_id);
+            const c = (counts && counts.get) ? Number(counts.get(rid) || 0) : Number(r.total || 0);
+            if (!c) continue;
+            const title = String(r.title || rid);
+            const desc = String(r.description || '');
+            rows.push({ rid: rid, title: title, desc: desc, c: c });
+          }
+          if (!rows.length) {
+            host.className = 'muted';
+            host.textContent = 'No hay alertas para este filtro.';
+            return;
+          }
+          let html = "<table class='summary'><thead><tr><th>Regla</th><th>Cómo se detecta</th><th class='num'>Alertas</th></tr></thead><tbody>";
+          for (const x of rows) {
+            html += "<tr>";
+            html += "<td class='mono'>" + escHtml(x.title) + "</td>";
+            html += "<td>" + escHtml(x.desc || '—') + "</td>";
+            html += "<td class='num mono'>" + String(x.c) + "</td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+          host.className = '';
+          host.innerHTML = html;
+        }
+
+        function escHtml(s) {
+          return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        function renderRules(counts) {
+          const rulesDiv = document.getElementById('rules');
+          if (!rulesDiv) return;
+          rulesDiv.innerHTML = '';
+          if (!RULES.length) {
+            rulesDiv.innerHTML = "<section class='card'><div class='muted'>No hay alertas para esta ventana.</div></section>";
+            return;
+          }
+          for (const r of RULES) {
+            const rid = String(r.rule_id);
+            const visibleCount = (counts && counts.get) ? Number(counts.get(rid) || 0) : 0;
+            if (!visibleCount) continue;
+            const d = document.createElement('details');
+            d.className = 'card rule';
+            d.id = 'rule_' + String(r.rule_id);
+            const title = String(r.title || r.rule_id);
+            const total = Number(visibleCount || 0);
+            d.innerHTML = `
+              <summary>
+                <h2 style="display:inline; margin:0;">${title}</h2>
+                <span class="muted"> (${total} alertas)</span>
+              </summary>
+              <div data-role="pager"></div>
+              <div data-role="rule-body"></div>
+            `;
+            d.addEventListener('toggle', () => {
+              if (!d.open) return;
+              const p = Number(d.dataset.page || 0);
+              renderRulePage(r, p);
+            });
+            rulesDiv.appendChild(d);
+          }
+          if (!rulesDiv.children.length) {
+            rulesDiv.innerHTML = "<section class='card'><div class='muted'>No hay alertas para este filtro.</div></section>";
+          }
+        }
+
+        function renderSearch(term) {
+          const out = document.getElementById('results');
+          if (!out) return;
+          const t = norm(term || '');
+          if (!t) { out.className = 'muted'; out.textContent = 'Escribe en el buscador para ver coincidencias.'; return; }
+          const hits = [];
+          for (const m of META) {
+            if (!passesFuel(m)) continue;
+            if ((m._hay || '').includes(t)) hits.push(m);
+            if (hits.length >= 120) break;
+          }
+          if (!hits.length) { out.className = 'muted'; out.textContent = 'Sin coincidencias.'; return; }
+          let html = "<table class='summary'><thead><tr><th>Regla</th><th>Entidad</th><th class='num'>Monto</th><th></th></tr></thead><tbody>";
+          for (const m of hits) {
+            html += "<tr>";
+            html += "<td>" + (m.rule_title || m.rule_id || '') + "</td>";
+            html += "<td>" + (m.entity_label || '') + "</td>";
+            html += "<td class='num mono'>" + fmtMoney(m.amount || 0) + "</td>";
+            html += "<td><button class='btn btn-sm js-open' type='button' data-alert='" + String(m.alert_id) + "'>Ver</button></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+          out.className = '';
+          out.innerHTML = html;
+        }
+
+        document.addEventListener('click', (e) => {
+          const t = e.target;
+          if (!t) return;
+          const pbtn = t.closest && t.closest('button.js-page');
+          if (pbtn) {
+            const rid = String(pbtn.dataset.rule || '');
+            const p = Number(pbtn.dataset.page || 0);
+            const ruleObj = ruleById.get(rid);
+            if (ruleObj) renderRulePage(ruleObj, p);
+            return;
+          }
+          const btn = t.closest && t.closest('button.js-open');
+          if (!btn) return;
+          const aid = btn.dataset.alert;
+          if (aid) openAlert(String(aid));
+        });
+
+        function renderAll() {
+          setChartVariant();
+          const counts = computeVisibleCounts();
+          renderMethodology(counts);
+          renderTop();
+          renderRules(counts);
+          const q = document.getElementById('q');
+          if (q) renderSearch(q.value || '');
+        }
+
+        const cb = document.getElementById('incFuel');
+        if (cb) {
+          includeFuel = !!cb.checked;
+          cb.addEventListener('change', () => {
+            includeFuel = !!cb.checked;
+            renderAll();
+          });
+        }
+
+        renderAll();
+        const q = document.getElementById('q');
+        if (q) q.addEventListener('input', () => renderSearch(q.value));
+      })();
+    </script>
+  </body>
+</html>
